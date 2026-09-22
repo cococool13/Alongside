@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { agenticAccount } from './broker.js';
+import { agenticAccount, callRobinhood } from './broker.js';
 
 const REGISTER = 'https://agent.robinhood.com/oauth/trading/register';
 const AUTHORIZE = 'https://robinhood.com/oauth';
@@ -23,6 +23,23 @@ export class AccountSession extends DurableObject {
   }
   async saveSelection(picks) { await this.ctx.storage.put('selection', picks); }
   async selection() { return await this.ctx.storage.get('selection') || null; }
+  async brokerRead(name, args = {}) {
+    if (!['get_accounts', 'get_portfolio', 'get_equity_positions', 'get_equity_orders', 'get_equity_quotes', 'get_equity_tradability'].includes(name)) throw new Error('Unsupported broker read');
+    let token = await this.ctx.storage.get('token');
+    if (!token?.account_number) throw new Error('Not connected');
+    if (token.expires_at && Date.now() > token.expires_at - 60_000) {
+      const response = await fetch(TOKEN, {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+        body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: token.refresh_token, client_id: token.client_id, resource: RESOURCE }),
+      });
+      if (!response.ok) throw new Error('Robinhood connection expired');
+      const fresh = await response.json();
+      if (typeof fresh.access_token !== 'string') throw new Error('Robinhood token refresh failed');
+      token = { ...token, ...fresh, refresh_token: fresh.refresh_token || token.refresh_token, expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000 };
+      await this.ctx.storage.put('token', token);
+    }
+    return callRobinhood(token.access_token, name, args);
+  }
   async disconnect() { await this.ctx.storage.deleteAll(); }
 }
 
@@ -111,7 +128,7 @@ export async function oauth(request, env) {
     let agentic;
     try { agentic = await agenticAccount(token.access_token); }
     catch { return redirect('/?connection=failed'); }
-    await account.connect({ ...token, client_id: flow.client_id, account_number: agentic.number, account_last4: agentic.last4, account_type: agentic.type, connected_at: new Date().toISOString() });
+    await account.connect({ ...token, client_id: flow.client_id, account_number: agentic.number, account_last4: agentic.last4, account_type: agentic.type, connected_at: new Date().toISOString(), expires_at: Date.now() + Number(token.expires_in || 3600) * 1000 });
     return redirect('/portfolios.html?connected=1');
   }
   if (url.pathname === '/api/disconnect' && request.method === 'POST') {

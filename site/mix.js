@@ -153,3 +153,15 @@ follow.addEventListener('click', async () => {
   } catch (error) { status.textContent = error.message; }
   finally { follow.disabled = false; }
 });
+
+if (!['127.0.0.1', 'localhost'].includes(location.hostname)) document.querySelector('[data-local-only]').remove();
+fetch('/api/connection').then(response => response.json()).then(connection => {
+  const status = document.querySelector('#connection-status');
+  status.textContent = connection.connected ? `Robinhood Agentic ••••${connection.account_last4} connected` : 'Connect Robinhood before saving a choice.';
+  if (!connection.connected) {
+    const button = document.querySelector('#follow');
+    button.disabled = true;
+    const link = document.createElement('a'); link.href = '/api/connect'; link.className = 'text-link'; link.textContent = 'Connect Robinhood →';
+    status.after(link);
+  }
+}).catch(() => { document.querySelector('#connection-status').textContent = 'Connection status unavailable.'; });
