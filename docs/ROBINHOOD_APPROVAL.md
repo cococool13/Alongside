@@ -13,6 +13,15 @@ documents the Trading MCP endpoint and directs Robinhood-side errors to support.
 
 Request through Robinhood's official support channel:
 
+## Current support request
+
+On 2026-09-22, the request was submitted through the signed-in Robinhood
+Support chat and routed to Agentic Trading account support. A human support
+agent confirmed that support cannot grant approval directly, but said the
+request would be forwarded for review and estimated 4–5 business days for a
+response. No case number, client ID, redirect registration, or written
+authorization has been issued yet.
+
 > I am building Alongside, a website for following portfolios derived from
 > public House transaction disclosures and SEC 13F filings. I want to connect
 > my Robinhood Agentic account through the Robinhood Trading MCP using OAuth.
