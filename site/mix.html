@@ -1,17 +1,2 @@
 <!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mix · Alongside</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Instrument+Serif&display=swap">
-<link rel="stylesheet" href="/styles.css">
-<nav class="bar">
-  <a class="brand" href="/"><img src="/logo.jpg" alt="">Alongside</a>
-  <div class="links"><a href="/portfolios.html">Portfolios</a></div>
-</nav>
-<main>
-  <h1>Split the <span>cash.</span></h1>
-  <div id="choices"></div>
-  <div class="mix" id="mix"></div>
-  <div id="result"></div>
-</main>
-<script src="/mix.js"></script>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Your mix · Alongside</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css"></head><body><header class="bar"><a class="brand" href="/">Alongside<span class="brand-mark" aria-hidden="true">↗</span></a><a class="step" href="/portfolios.html">← BACK TO PORTFOLIOS</a></header><main class="portfolio-main"><div class="eyebrow">YOUR MIX</div><h1>A portfolio, <em>your way.</em></h1><p class="lede">Choose up to two portfolios. Their largest holdings are combined below for a simple preview.</p><div id="choices"></div><div class="mix" id="mix"></div><p class="mix-insight" id="mix-insight" aria-live="polite"></p><div class="list-head"><span>TOP HOLDINGS</span><span>EST. WEIGHT</span></div><div id="result"></div><section class="proposal" aria-labelledby="follow-title"><div class="eyebrow">YOUR CONNECTION</div><h2 id="follow-title">Follow this mix.</h2><p class="note">Save your choice to this Robinhood connection. Automatic trading is not active yet.</p><button class="btn" id="follow" type="button">Save portfolio choice <span aria-hidden="true">→</span></button><p class="note" id="follow-status" role="status"></p></section><section class="proposal" aria-labelledby="proposal-title"><div class="eyebrow">LOCAL ACCOUNT PREVIEW</div><h2 id="proposal-title">See the path from here.</h2><p class="note">On this Mac, compare the mix with a recent Agentic account snapshot. This creates a draft outside the active QCC-1 trading plan.</p><button id="preview" class="btn" type="button">Preview sells & buys <span aria-hidden="true">→</span></button><div id="proposal-result" aria-live="polite"></div><details class="activation" id="activation" hidden><summary>Enable Agentic trading for this mix</summary><p class="note">This replaces QCC-1 in the Agentic account. The agent will sell positions outside this mix, wait for settled buying power, and buy toward the selected weights. Each stock is capped at 20%.</p><p class="note">The agent rebalances when this portfolio’s published holdings change.</p><label class="consent"><input id="replace-confirm" type="checkbox"> I want this mix to replace QCC-1 and allow Agentic trades.</label><button class="btn" id="activate" type="button">Request strategy switch</button><p class="note" id="activation-status" aria-live="polite"></p></details></section><p class="fine">Public research only. Account data stays on this Mac. A proposal is not a trade instruction. Cash-account sale proceeds may need one business day to settle before buys.</p></main><script src="/mix.js"></script></body></html>

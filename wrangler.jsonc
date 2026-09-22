@@ -1,7 +1,10 @@
 {
   "name": "alongside",
+  "main": "./worker/index.js",
   "compatibility_date": "2026-09-22",
-  "assets": {
-    "directory": "./site"
-  }
+  "assets": { "directory": "./site", "binding": "ASSETS" },
+  "durable_objects": {
+    "bindings": [{ "name": "ACCOUNT_SESSIONS", "class_name": "AccountSession" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AccountSession"] }]
 }

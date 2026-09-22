@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, urlparse
 from book import fit_to_cash
 from filings import INVESTORS, book_for, load_13f, politician_rows, refresh_house, ticker_index
 from publish import build
+from planner import build_proposal
+from mandate import request_mandate
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / "state"
@@ -21,7 +23,7 @@ HOST = "127.0.0.1"
 PORT = 8765
 LOCK = threading.Lock()
 CACHE = {"mtime": None, "house": {"trades": []}, "rows": []}
-TYPES = {".html": "text/html; charset=utf-8", ".json": "application/json", ".css": "text/css"}
+TYPES = {".html": "text/html; charset=utf-8", ".json": "application/json", ".css": "text/css", ".js": "text/javascript"}
 
 
 def cached_house():
@@ -104,6 +106,9 @@ def save_plan(body):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def _trusted_host(self):
+        return self.headers.get("Host") in {f"{HOST}:{PORT}", f"localhost:{PORT}"}
+
     def _send(self, code, body, content_type):
         data = body if isinstance(body, bytes) else body.encode()
         self.send_response(code)
@@ -119,6 +124,9 @@ class Handler(BaseHTTPRequestHandler):
         return
 
     def do_GET(self):
+        if not self._trusted_host():
+            self._json(403, {"error": "Local host required"})
+            return
         parsed = urlparse(self.path)
         if parsed.path == "/api/account":
             self._json(200, load_broker())
@@ -142,6 +150,35 @@ class Handler(BaseHTTPRequestHandler):
         self._json(404, {"error": "Not found"})
 
     def do_POST(self):
+        if not self._trusted_host():
+            self._json(403, {"error": "Local host required"})
+            return
+        if self.headers.get("Origin") not in (None, f"http://{HOST}:{PORT}"):
+            self._json(403, {"error": "Local origin required"})
+            return
+        if urlparse(self.path).path == "/api/mandate":
+            try:
+                size = int(self.headers.get("content-length", "0"))
+                if not 0 < size <= 4096:
+                    raise ValueError("Invalid request size")
+                body = json.loads(self.rfile.read(size))
+                self._json(200, request_mandate(SITE, STATE, body))
+            except (ValueError, TypeError, KeyError) as error:
+                self._json(400, {"error": str(error)})
+            return
+        if urlparse(self.path).path == "/api/proposal":
+            try:
+                size = int(self.headers.get("content-length", "0"))
+                if not 0 < size <= 4096:
+                    raise ValueError("Invalid request size")
+                body = json.loads(self.rfile.read(size))
+                proposal = build_proposal(SITE, load_broker(), body.get("picks", []))
+                if body.get("save") is True:
+                    (STATE / "alongside_draft.json").write_text(json.dumps(proposal, indent=2))
+                self._json(200, proposal)
+            except (ValueError, TypeError, KeyError) as error:
+                self._json(400, {"error": str(error)})
+            return
         if urlparse(self.path).path != "/api/arm":
             self._json(404, {"error": "Not found"})
             return
