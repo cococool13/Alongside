@@ -1,8 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
+import { agenticAccount } from './broker.js';
 
 const REGISTER = 'https://agent.robinhood.com/oauth/trading/register';
 const AUTHORIZE = 'https://robinhood.com/oauth';
 const TOKEN = 'https://api.robinhood.com/oauth2/token/';
+const RESOURCE = 'https://agent.robinhood.com/mcp/trading';
 const COOKIE = 'alongside_session';
 const TTL = 10 * 60 * 1000;
 
@@ -17,7 +19,7 @@ export class AccountSession extends DurableObject {
   async connect(token) { await this.ctx.storage.put('token', token); }
   async status() {
     const token = await this.ctx.storage.get('token');
-    return { connected: Boolean(token?.access_token), connected_at: token?.connected_at || null };
+    return { connected: Boolean(token?.access_token && token?.account_number), connected_at: token?.connected_at || null, account_last4: token?.account_last4 || null };
   }
   async saveSelection(picks) { await this.ctx.storage.put('selection', picks); }
   async selection() { return await this.ctx.storage.get('selection') || null; }
@@ -76,7 +78,7 @@ export async function oauth(request, env) {
     const redirectUri = `${url.origin}/api/callback`;
     const registration = await fetch(REGISTER, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ client_name: 'Alongside', redirect_uris: [redirectUri], grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: 'none' }),
+      body: JSON.stringify({ client_name: 'Alongside', redirect_uris: [redirectUri], grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: 'none', scope: 'internal' }),
     });
     if (!registration.ok) return json({ error: 'Robinhood did not accept the connection request' }, 502);
     const client = await registration.json();
@@ -89,22 +91,27 @@ export async function oauth(request, env) {
     authorization.searchParams.set('code_challenge', challenge);
     authorization.searchParams.set('code_challenge_method', 'S256');
     authorization.searchParams.set('state', state);
+    authorization.searchParams.set('resource', RESOURCE);
+    authorization.searchParams.set('scope', 'internal');
     return redirect(authorization.toString(), session);
   }
   if (url.pathname === '/api/callback' && request.method === 'GET') {
     const session = cookie(request);
-    if (!session || !url.searchParams.get('state') || !url.searchParams.get('code')) return redirect('/?connection=failed');
+    if (!session || !url.searchParams.get('state') || !url.searchParams.get('code') || (url.searchParams.get('iss') && url.searchParams.get('iss') !== RESOURCE)) return redirect('/?connection=failed');
     const account = env.ACCOUNT_SESSIONS.getByName(session);
     const flow = await account.consume(url.searchParams.get('state'));
     if (!flow || flow.redirectUri !== `${url.origin}/api/callback`) return redirect('/?connection=failed');
     const response = await fetch(TOKEN, {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-      body: new URLSearchParams({ grant_type: 'authorization_code', code: url.searchParams.get('code'), redirect_uri: flow.redirectUri, client_id: flow.client_id, code_verifier: flow.verifier }),
+      body: new URLSearchParams({ grant_type: 'authorization_code', code: url.searchParams.get('code'), redirect_uri: flow.redirectUri, client_id: flow.client_id, code_verifier: flow.verifier, resource: RESOURCE }),
     });
     if (!response.ok) return redirect('/?connection=failed');
     const token = await response.json();
     if (typeof token.access_token !== 'string' || typeof token.refresh_token !== 'string') return redirect('/?connection=failed');
-    await account.connect({ ...token, client_id: flow.client_id, connected_at: new Date().toISOString() });
+    let agentic;
+    try { agentic = await agenticAccount(token.access_token); }
+    catch { return redirect('/?connection=failed'); }
+    await account.connect({ ...token, client_id: flow.client_id, account_number: agentic.number, account_last4: agentic.last4, account_type: agentic.type, connected_at: new Date().toISOString() });
     return redirect('/portfolios.html?connected=1');
   }
   if (url.pathname === '/api/disconnect' && request.method === 'POST') {

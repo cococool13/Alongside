@@ -1,0 +1,20 @@
+{
+  "name": "alongside",
+  "version": "1.0.0",
+  "description": "Public portfolios from House disclosures and SEC 13Fs. Ranked by the 90-day price change of the current holdings.",
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -q"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cococool13/Alongside.git"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/cococool13/Alongside/issues"
+  },
+  "homepage": "https://github.com/cococool13/Alongside#readme",
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
+  }
+}
