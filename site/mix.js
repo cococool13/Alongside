@@ -3,6 +3,7 @@ const choices = document.querySelector('#choices');
 const mix = document.querySelector('#mix');
 const result = document.querySelector('#result');
 const proposalResult = document.querySelector('#proposal-result');
+let accountConnected = false;
 
 function equalize() {
   const rows = [...picked.values()];
@@ -135,9 +136,16 @@ fetch('/pilots.json').then(response => response.json()).then(data => {
     const button = document.createElement('button'); button.className = 'pilot'; button.type = 'button'; button.dataset.id = pilot.id; button.textContent = pilot.name;
     button.addEventListener('click', () => toggle(pilot)); choices.append(button);
   });
-  new URLSearchParams(location.search).getAll('add').slice(0, 2).forEach(id => {
+  const requested = new URLSearchParams(location.search).getAll('add').slice(0, 2);
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem('alongside-mix') || '[]'); } catch {}
+  (requested.length ? requested : saved.map(row => row.id)).forEach(id => {
     const preset = data.pilots.find(row => row.id === id && eligible(row)); if (preset) toggle(preset);
   });
+  if (!requested.length && picked.size === saved.length && saved.every(row => picked.has(row.id)) && saved.reduce((sum, row) => sum + row.percent, 0) === 100) {
+    saved.forEach(row => { picked.get(row.id).percent = row.percent; });
+    render();
+  }
 }).catch(() => { choices.textContent = 'Portfolios could not load.'; });
 
 const follow = document.querySelector('#follow');
@@ -146,10 +154,16 @@ follow.addEventListener('click', async () => {
   if (!picked.size) { status.textContent = 'Choose a portfolio first.'; return; }
   follow.disabled = true;
   try {
-    const response = await fetch('/api/selection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ picks: [...picked.values()].map(({ id, percent }) => ({ id, percent })) }) });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Could not save your choice');
-    status.textContent = 'Portfolio choice saved to your connection. Automatic trading is not active yet.';
+    const picks = [...picked.values()].map(({ id, percent }) => ({ id, percent }));
+    if (accountConnected) {
+      const response = await fetch('/api/selection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ picks }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save your choice');
+      status.textContent = 'Mix saved to your Robinhood connection. Automatic trading is not active yet.';
+    } else {
+      localStorage.setItem('alongside-mix', JSON.stringify(picks));
+      status.textContent = 'Mix saved in this browser. No account is connected and no trades will be placed.';
+    }
   } catch (error) { status.textContent = error.message; }
   finally { follow.disabled = false; }
 });
@@ -157,10 +171,10 @@ follow.addEventListener('click', async () => {
 if (!['127.0.0.1', 'localhost'].includes(location.hostname)) document.querySelector('[data-local-only]').remove();
 fetch('/api/connection').then(response => response.json()).then(connection => {
   const status = document.querySelector('#connection-status');
-  status.textContent = connection.connected ? `Robinhood Agentic ••••${connection.account_last4} connected` : 'Connect Robinhood before saving a choice.';
-  if (!connection.connected) {
-    const button = document.querySelector('#follow');
-    button.disabled = true;
+  accountConnected = Boolean(connection.connected);
+  if (connection.connected) document.querySelector('#follow-note').textContent = 'Save this mix to your Robinhood connection. Automatic trading is not active yet.';
+  status.textContent = connection.connected ? `Robinhood Agentic ••••${connection.account_last4} connected` : 'Robinhood connection pending approval. You can save this mix in your browser.';
+  if (!connection.connected && connection.available) {
     const link = document.createElement('a'); link.href = '/api/connect'; link.className = 'text-link'; link.textContent = 'Connect Robinhood →';
     status.after(link);
   }

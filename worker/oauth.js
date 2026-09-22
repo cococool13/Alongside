@@ -1,7 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { agenticAccount, callRobinhood } from './broker.js';
 
-const REGISTER = 'https://agent.robinhood.com/oauth/trading/register';
 const AUTHORIZE = 'https://robinhood.com/oauth';
 const TOKEN = 'https://api.robinhood.com/oauth2/token/';
 const RESOURCE = 'https://agent.robinhood.com/mcp/trading';
@@ -78,8 +77,8 @@ export async function oauth(request, env) {
   const url = new URL(request.url);
   if (url.pathname === '/api/connection') {
     const session = cookie(request);
-    if (!session) return json({ connected: false });
-    return json(await env.ACCOUNT_SESSIONS.getByName(session).status());
+    if (!session) return json({ connected: false, available: Boolean(env.ROBINHOOD_CLIENT_ID) });
+    return json({ ...await env.ACCOUNT_SESSIONS.getByName(session).status(), available: Boolean(env.ROBINHOOD_CLIENT_ID) });
   }
   if (url.pathname === '/api/selection') {
     const session = cookie(request);
@@ -102,22 +101,16 @@ export async function oauth(request, env) {
   }
   if (url.pathname === '/api/connect' && request.method === 'GET') {
     if (url.protocol !== 'https:') return json({ error: 'HTTPS required' }, 400);
+    if (!env.ROBINHOOD_CLIENT_ID) return json({ error: 'Robinhood has not authorized this website connection yet' }, 503);
     const session = cookie(request) || random();
     const verifier = random();
     const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
     const state = random();
     const redirectUri = `${url.origin}/api/callback`;
-    const registration = await fetch(REGISTER, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ client_name: 'Alongside', redirect_uris: [redirectUri], grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: 'none', scope: 'internal' }),
-    });
-    if (!registration.ok) return json({ error: 'Robinhood did not accept the connection request' }, 502);
-    const client = await registration.json();
-    if (typeof client.client_id !== 'string') return json({ error: 'Robinhood did not provide a client ID' }, 502);
-    await env.ACCOUNT_SESSIONS.getByName(session).begin({ state, verifier, client_id: client.client_id, redirectUri, started: Date.now() });
+    await env.ACCOUNT_SESSIONS.getByName(session).begin({ state, verifier, client_id: env.ROBINHOOD_CLIENT_ID, redirectUri, started: Date.now() });
     const authorization = new URL(AUTHORIZE);
     authorization.searchParams.set('response_type', 'code');
-    authorization.searchParams.set('client_id', client.client_id);
+    authorization.searchParams.set('client_id', env.ROBINHOOD_CLIENT_ID);
     authorization.searchParams.set('redirect_uri', redirectUri);
     authorization.searchParams.set('code_challenge', challenge);
     authorization.searchParams.set('code_challenge_method', 'S256');

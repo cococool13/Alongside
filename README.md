@@ -10,10 +10,11 @@ python3 filings.py
 python3 app.py
 ```
 
-`state/` stays on this Mac. The public site uses Robinhood OAuth; it never sees
-the Robinhood password. The OAuth token and selected portfolio are stored in a
-per-browser Cloudflare Durable Object. Disconnect deletes that local token;
-revoking the connection in Robinhood removes the Robinhood grant.
+`state/` stays on this Mac. Public portfolio research remains available.
+Robinhood rejected Alongside's public OAuth callback on 2026-09-22. The
+Connect route is disabled until Robinhood authorizes a production website
+client. A mix can be saved in the current browser; no account is linked and no
+trade can be placed from the public site. See `docs/ROBINHOOD_APPROVAL.md`.
 
 On the local server (`python3 app.py`), the mix page can compare selected portfolios
 with a recent `state/broker.json` snapshot. It previews sell orders, buys covered by

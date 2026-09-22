@@ -7,6 +7,7 @@ fetch('/pilots.json').then(response => {
   return response.json();
 }).then(data => {
   list.replaceChildren();
+  document.querySelector('#as-of').textContent = `Research snapshot: ${data.as_of}.`;
   const dataDay = new Date(`${data.as_of}T00:00:00Z`);
   const ranked = data.pilots.filter(row => {
     const age = (dataDay - new Date(`${row.as_of}T00:00:00Z`)) / 86400000;

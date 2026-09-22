@@ -2,13 +2,13 @@ const id = new URLSearchParams(location.search).get("id");
 fetch("/pilots.json").then((r) => r.json()).then((data) => {
   const pilot = data.pilots.find((row) => row.id === id);
   if (!pilot) return;
-  document.title = pilot.name;
+  document.title = `${pilot.name} · Alongside`;
   document.querySelector("#name").textContent = pilot.name;
-  document.querySelector("#who").textContent = pilot.who;
+  document.querySelector("#who").textContent = `${pilot.who} · ${pilot.kind === "13f" ? "SEC 13F" : "House disclosure"}`;
   if (typeof pilot.return_90d === "number") {
     const ret = document.querySelector("#ret");
     ret.className = "chip";
-    ret.textContent = (pilot.return_90d >= 0 ? "+" : "") + pilot.return_90d.toFixed(1) + "%";
+    ret.textContent = `90-day holdings price change: ${pilot.return_90d >= 0 ? "+" : ""}${pilot.return_90d.toFixed(1)}%`;
   }
   const holds = document.querySelector("#holds");
   Object.entries(pilot.weights).sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([ticker, weight]) => {
