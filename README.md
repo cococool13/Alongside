@@ -10,7 +10,9 @@ python3 filings.py
 python3 app.py
 ```
 
-`state/` stays on this Mac. The site does not store a Robinhood login or an account balance.
+`state/` stays on this Mac. The public site uses Robinhood OAuth; it never sees
+the Robinhood password. The OAuth token and selected portfolio are stored in a
+per-browser Cloudflare Durable Object and are removed by Disconnect.
 
 On the local server (`python3 app.py`), the mix page can compare selected portfolios
 with a recent `state/broker.json` snapshot. It previews sell orders, buys covered by
@@ -24,6 +26,6 @@ The local mix screen can also request a strategy switch. That writes
 Robinhood data before promoting it and sending orders. See
 `docs/OPERATOR.md` for the scheduled two-leg execution path. A requested or
 active mandate routes the existing Agentic operator away from QCC-1. There is
-currently no running Alongside background operator or hosted Robinhood OAuth
-connection; saving a mandate alone does not start autonomous trading. A
+currently no running Alongside background operator; saving a mandate or a
+hosted portfolio selection alone does not start autonomous trading. A
 published portfolio change is the rebalance trigger once those services exist.
