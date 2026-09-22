@@ -7,11 +7,11 @@ if (new URLSearchParams(location.search).get('connection') === 'failed') {
 }
 fetch('/api/connection').then(response => response.json()).then(connection => {
   if (!connection.connected) return;
-  status.textContent = 'Robinhood connection saved on this browser.';
+  status.textContent = `Robinhood Agentic ••••${connection.account_last4} connected`;
   status.hidden = false;
   action.href = '/portfolios.html';
   action.innerHTML = 'Choose a portfolio <span aria-hidden="true">→</span>';
-  fine.textContent = 'Your connection is stored securely on the server. You can disconnect it here at any time.';
+  fine.textContent = 'Your connection is stored on the server. Disconnect here to remove Alongside’s local token, then revoke Alongside in Robinhood to remove its grant.';
   const disconnect = document.createElement('button');
   disconnect.type = 'button'; disconnect.className = 'text-link'; disconnect.textContent = 'Disconnect Robinhood';
   disconnect.addEventListener('click', async () => {

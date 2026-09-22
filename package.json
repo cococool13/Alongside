@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Public portfolios from House disclosures and SEC 13Fs. Ranked by the 90-day price change of the current holdings.",
   "scripts": {
-    "test": "python3 -m unittest discover -s tests -q"
+    "test": "python3 -m unittest discover -s tests -q && node --test worker/tests/*.test.js"
   },
   "repository": {
     "type": "git",

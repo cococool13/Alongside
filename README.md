@@ -12,7 +12,8 @@ python3 app.py
 
 `state/` stays on this Mac. The public site uses Robinhood OAuth; it never sees
 the Robinhood password. The OAuth token and selected portfolio are stored in a
-per-browser Cloudflare Durable Object and are removed by Disconnect.
+per-browser Cloudflare Durable Object. Disconnect deletes that local token;
+revoking the connection in Robinhood removes the Robinhood grant.
 
 On the local server (`python3 app.py`), the mix page can compare selected portfolios
 with a recent `state/broker.json` snapshot. It previews sell orders, buys covered by

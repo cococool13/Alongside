@@ -18,26 +18,40 @@ export class AccountSession extends DurableObject {
   }
   async connect(token) { await this.ctx.storage.put('token', token); }
   async status() {
-    const token = await this.ctx.storage.get('token');
-    return { connected: Boolean(token?.access_token && token?.account_number), connected_at: token?.connected_at || null, account_last4: token?.account_last4 || null };
+    try {
+      const token = await this.currentToken();
+      return { connected: Boolean(token?.access_token && token?.account_number), connected_at: token?.connected_at || null, account_last4: token?.account_last4 || null };
+    } catch { return { connected: false, reconnect_required: true }; }
   }
   async saveSelection(picks) { await this.ctx.storage.put('selection', picks); }
   async selection() { return await this.ctx.storage.get('selection') || null; }
+  async currentToken() {
+    let token = await this.ctx.storage.get('token');
+    if (!token) return null;
+    if (!token.expires_at || Date.now() > token.expires_at - 60_000) {
+      if (!this.refreshPromise) {
+        this.refreshPromise = (async () => {
+          const response = await fetch(TOKEN, {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+            body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: token.refresh_token, client_id: token.client_id, resource: RESOURCE }),
+          });
+          if (!response.ok) throw new Error('Robinhood connection expired');
+          const fresh = await response.json();
+          if (typeof fresh.access_token !== 'string') throw new Error('Robinhood token refresh failed');
+          const updated = { ...token, ...fresh, refresh_token: fresh.refresh_token || token.refresh_token, expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000 };
+          await this.ctx.storage.put('token', updated);
+          return updated;
+        })();
+      }
+      try { token = await this.refreshPromise; }
+      finally { this.refreshPromise = null; }
+    }
+    return token;
+  }
   async brokerRead(name, args = {}) {
     if (!['get_accounts', 'get_portfolio', 'get_equity_positions', 'get_equity_orders', 'get_equity_quotes', 'get_equity_tradability'].includes(name)) throw new Error('Unsupported broker read');
-    let token = await this.ctx.storage.get('token');
+    const token = await this.currentToken();
     if (!token?.account_number) throw new Error('Not connected');
-    if (token.expires_at && Date.now() > token.expires_at - 60_000) {
-      const response = await fetch(TOKEN, {
-        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-        body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: token.refresh_token, client_id: token.client_id, resource: RESOURCE }),
-      });
-      if (!response.ok) throw new Error('Robinhood connection expired');
-      const fresh = await response.json();
-      if (typeof fresh.access_token !== 'string') throw new Error('Robinhood token refresh failed');
-      token = { ...token, ...fresh, refresh_token: fresh.refresh_token || token.refresh_token, expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000 };
-      await this.ctx.storage.put('token', token);
-    }
     return callRobinhood(token.access_token, name, args);
   }
   async disconnect() { await this.ctx.storage.deleteAll(); }
